@@ -7,7 +7,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent
+  DragEndEvent,
+  DragStartEvent,
+  DragCancelEvent
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -32,10 +34,12 @@ interface StaffReorderPageProps {
 // SortableItemコンポーネント - インラインスタイルを使用
 function SortableStaffItem({
   item,
-  onOpenSlider
+  onOpenSlider,
+  isDragging
 }: {
   item: StaffItem
   onOpenSlider: (item: StaffItem) => void
+  isDragging: boolean
 }) {
   const {
     attributes,
@@ -52,7 +56,15 @@ function SortableStaffItem({
 
   const baseStyle = {
     transform: CSS.Transform.toString(adjustedTransform),
-    transition
+    transition,
+    // ドラッグ中は高さを固定して安定させる
+    height: '3.5rem',
+    // ドラッグ中はz-indexを上げて他の要素の上に表示
+    zIndex: isDragging ? 10 : 1,
+    // ドラッグ中の要素の背景色を変更して視覚的なフィードバックを提供
+    backgroundColor: isDragging ? '#f3f4f6' : 'white',
+    // タッチ操作時のハイライトを無効化
+    WebkitTapHighlightColor: 'transparent'
   }
 
   // インラインスタイルで明示的に指定
@@ -66,7 +78,8 @@ function SortableStaffItem({
     padding: '0.5rem',
     marginBottom: '0.5rem',
     border: '1px solid #e2e8f0',
-    borderRadius: '0.25rem'
+    borderRadius: '0.25rem',
+    touchAction: 'none' // タッチ操作でのスクロールを無効化
   }
 
   return (
@@ -98,13 +111,16 @@ function SortableStaffItem({
         </div>
       </div>
 
-      {/* ハンドルアイコン (右側) */}
+      {/* ハンドルアイコン (右側) - タップ領域を広げる */}
       <div
         {...attributes}
         {...listeners}
         style={{ 
-          cursor: 'grab', 
-          color: '#6b7280'
+          cursor: 'grab',
+          color: '#6b7280',
+          padding: '0.5rem',  // タップ領域を広げる
+          fontSize: '1.25rem', // アイコンを少し大きく
+          touchAction: 'none' // スクロールを無効化
         }}
       >
         ⋮⋮
@@ -129,17 +145,52 @@ export default function StaffReorderPage({
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<StaffItem | null>(null)
   const [sliderValue, setSliderValue] = useState(0)
+  const [activeId, setActiveId] = useState<string | null>(null)
 
-  // センサーの設定
+  // センサーの設定をモバイル向けに最適化
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      // モバイルでのドラッグをより反応しやすくするための設定
+      activationConstraint: {
+        delay: 100, // 短い遅延でドラッグ開始
+        tolerance: 5, // 小さな動きでもドラッグ開始
+      }
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates
     })
   )
 
+  // ドラッグ開始時の処理
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id.toString())
+    
+    // モバイルでのスクロールを防止するためのボディスタイル設定
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+  }
+
+  // ドラッグキャンセル時の処理
+  const handleDragCancel = (event: DragCancelEvent) => {
+    setActiveId(null)
+    
+    // スクロール設定を戻す
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.width = ''
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
+    
+    // スクロール設定を戻す
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.width = ''
+    
+    setActiveId(null)
+    
     if (over && active.id !== over.id) {
       setItems((prevItems) => {
         const oldIndex = prevItems.findIndex((i) => i.id.toString() === active.id)
@@ -195,6 +246,27 @@ export default function StaffReorderPage({
     }
   }, [staffResults])
 
+  // モバイルでのドラッグ体験を最適化するための処理
+  useEffect(() => {
+    const preventDefaultTouchMove = (e: TouchEvent) => {
+      // ドラッグ中のみスクロールを防止
+      if (activeId) {
+        e.preventDefault()
+      }
+    }
+
+    // タッチイベントリスナーを追加
+    document.addEventListener('touchmove', preventDefaultTouchMove, { passive: false })
+
+    // クリーンアップ関数
+    return () => {
+      document.removeEventListener('touchmove', preventDefaultTouchMove)
+      document.body.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+  }, [activeId])
+
   return (
     <div style={{ padding: '1rem' }}>
       <div style={{ 
@@ -219,7 +291,9 @@ export default function StaffReorderPage({
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
         <SortableContext
           items={items.map((item) => item.id.toString())}
@@ -230,6 +304,7 @@ export default function StaffReorderPage({
               key={item.id}
               item={item}
               onOpenSlider={openSliderModal}
+              isDragging={activeId === item.id.toString()}
             />
           ))}
         </SortableContext>
