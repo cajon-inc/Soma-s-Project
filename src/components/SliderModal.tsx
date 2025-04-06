@@ -1,4 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useRef, useEffect, useState } from 'react'
 
 interface SliderModalProps {
   isOpen: boolean
@@ -15,12 +16,12 @@ export default function SliderModal({
   currentPosition,
   maxPosition,
   onPositionChange,
-  itemName,
-}: SliderModalProps): JSX.Element | null {
+  itemName
+}: SliderModalProps) {
   const [value, setValue] = useState<number>(currentPosition)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  // モーダル外をクリックしたら閉じる
+  // モーダル外クリックで閉じる
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
@@ -35,7 +36,7 @@ export default function SliderModal({
     }
   }, [isOpen, onClose])
 
-  // currentPosition が更新されたら反映
+  // currentPositionが更新されたら反映
   useEffect(() => {
     setValue(currentPosition)
   }, [currentPosition])
@@ -69,10 +70,7 @@ export default function SliderModal({
           「{itemName}」の位置を変更 ({value}/{maxPosition})
         </h3>
         <div className="flex gap-2 items-center mb-4">
-          <button 
-            className="border px-2 py-1 rounded" 
-            onClick={decrement}
-          >
+          <button className="border px-2 py-1 rounded" onClick={decrement}>
             ←
           </button>
           <input
@@ -83,28 +81,19 @@ export default function SliderModal({
             onChange={handleSliderChange}
             className="flex-1"
           />
-          <button 
-            className="border px-2 py-1 rounded" 
-            onClick={increment}
-          >
+          <button className="border px-2 py-1 rounded" onClick={increment}>
             →
           </button>
         </div>
         <div className="flex justify-end gap-2">
-          <button 
-            className="border px-3 py-1 rounded" 
-            onClick={onClose}
-          >
+          <button className="border px-3 py-1 rounded" onClick={onClose}>
             キャンセル
           </button>
-          <button 
-            className="bg-blue-600 text-white px-3 py-1 rounded" 
-            onClick={handleApply}
-          >
+          <button className="bg-blue-600 text-white px-3 py-1 rounded" onClick={handleApply}>
             適用
           </button>
         </div>
       </div>
     </div>
   )
-} 
+}

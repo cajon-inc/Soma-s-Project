@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import * as React from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -26,41 +27,85 @@ interface StaffItem {
 
 interface StaffReorderPageProps {
   staffResults?: StaffItem[]
-  salonId?: number
 }
 
-// SortableItemコンポーネント
-function SortableStaffItem({ item, onOpenSlider }: { item: StaffItem; onOpenSlider: (item: StaffItem) => void }) {
+// SortableItemコンポーネント - インラインスタイルを使用
+function SortableStaffItem({
+  item,
+  onOpenSlider
+}: {
+  item: StaffItem
+  onOpenSlider: (item: StaffItem) => void
+}) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     transition
-  } = useSortable({ id: item.id })
+  } = useSortable({ id: item.id.toString() })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  // 横方向の移動を無効化（x = 0）
+  const adjustedTransform = transform
+    ? { ...transform, x: 0 }
+    : null
+
+  const baseStyle = {
+    transform: CSS.Transform.toString(adjustedTransform),
     transition
   }
 
+  // インラインスタイルで明示的に指定
+  const containerStyle = {
+    ...baseStyle,
+    display: 'flex',
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    padding: '0.5rem',
+    marginBottom: '0.5rem',
+    border: '1px solid #e2e8f0',
+    borderRadius: '0.25rem'
+  }
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="border rounded p-2 mb-2 flex items-center"
-    >
-      <div
-        className="w-10 text-center cursor-pointer font-bold"
-        onClick={() => onOpenSlider(item)}
-      >
-        {item.position}
+    <div ref={setNodeRef} style={containerStyle}>
+      {/* 左側グループ (番号と名前) */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'row' as const,
+        alignItems: 'center',
+        flex: 1
+      }}>
+        {/* 番号 */}
+        <div
+          onClick={() => onOpenSlider(item)}
+          style={{
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            textAlign: 'left',
+            width: '2.5rem',
+            marginRight: '0.5rem'
+          }}
+        >
+          {item.position}
+        </div>
+
+        {/* 名前 */}
+        <div style={{ textAlign: 'left' }}>
+          {item.name}
+        </div>
       </div>
-      <div className="flex-1 ml-2">{item.name}</div>
+
+      {/* ハンドルアイコン (右側) */}
       <div
-        className="cursor-grab ml-2 text-gray-500"
         {...attributes}
         {...listeners}
+        style={{ 
+          cursor: 'grab', 
+          color: '#6b7280'
+        }}
       >
         ⋮⋮
       </div>
@@ -77,7 +122,9 @@ const MOCK_STAFF: StaffItem[] = [
   { id: 5, name: '渡辺 結衣', position: 5 }
 ]
 
-export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 1 }: StaffReorderPageProps) {
+export default function StaffReorderPage({
+  staffResults = MOCK_STAFF
+}: StaffReorderPageProps) {
   const [items, setItems] = useState<StaffItem[]>(staffResults)
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<StaffItem | null>(null)
@@ -92,23 +139,16 @@ export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 
   )
 
   const handleDragEnd = (event: DragEndEvent) => {
-    console.log('handleDragEnd called with:', event)
     const { active, over } = event
-
     if (over && active.id !== over.id) {
-      setItems((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id)
-        const newIndex = items.findIndex((item) => item.id === over.id)
-        
-        console.log(`Moving item from index ${oldIndex} to index ${newIndex}`)
-        
-        const newItems = arrayMove(items, oldIndex, newIndex)
-        const updatedItems = newItems.map((item, index) => ({
-          ...item,
-          position: index + 1
+      setItems((prevItems) => {
+        const oldIndex = prevItems.findIndex((i) => i.id.toString() === active.id)
+        const newIndex = prevItems.findIndex((i) => i.id.toString() === over.id)
+        const movedItems = arrayMove(prevItems, oldIndex, newIndex)
+        const updatedItems = movedItems.map((it, idx) => ({
+          ...it,
+          position: idx + 1
         }))
-        
-        console.log('Updated items:', updatedItems)
         return updatedItems
       })
     }
@@ -130,15 +170,19 @@ export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 
     const [removed] = newItems.splice(oldIndex, 1)
     newItems.splice(newIndex, 0, removed)
 
-    const updated = newItems.map((it, idx) => ({ ...it, position: idx + 1 }))
+    const updated = newItems.map((it, idx) => ({
+      ...it,
+      position: idx + 1
+    }))
     setItems(updated)
     setModalOpen(false)
   }
 
   const handleSave = useCallback(() => {
-    // In a real app, this would send data to the server
-    // For this demo, we'll just simulate a successful save
-    const positions = items.map((it) => ({ id: it.id, position: it.position }))
+    const positions = items.map((it) => ({
+      id: it.id,
+      position: it.position
+    }))
     console.log('Saving positions:', positions)
     alert('並び替えを保存しました')
   }, [items])
@@ -152,10 +196,22 @@ export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 
   }, [staffResults])
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">スタッフ一覧</h2>
-        <button onClick={handleSave} className="border px-4 py-1 rounded">
+    <div style={{ padding: '1rem' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        marginBottom: '1rem'
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>スタッフ一覧</h2>
+        <button 
+          onClick={handleSave} 
+          style={{ 
+            border: '1px solid #e2e8f0', 
+            padding: '0.25rem 1rem', 
+            borderRadius: '0.25rem' 
+          }}
+        >
           並び替えを保存
         </button>
       </div>
@@ -165,21 +221,20 @@ export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext 
-          items={items.map(item => item.id)} 
+        <SortableContext
+          items={items.map((item) => item.id.toString())}
           strategy={verticalListSortingStrategy}
         >
           {items.map((item) => (
-            <SortableStaffItem 
-              key={item.id} 
-              item={item} 
-              onOpenSlider={openSliderModal} 
+            <SortableStaffItem
+              key={item.id}
+              item={item}
+              onOpenSlider={openSliderModal}
             />
           ))}
         </SortableContext>
       </DndContext>
 
-      {/* スライダーモーダル */}
       {selectedItem && (
         <SliderModal
           isOpen={modalOpen}
@@ -192,4 +247,4 @@ export default function StaffReorderPage({ staffResults = MOCK_STAFF, salonId = 
       )}
     </div>
   )
-} 
+}
