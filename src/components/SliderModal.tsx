@@ -1,4 +1,3 @@
-// components/SliderModal.tsx
 import * as React from 'react'
 import { useRef, useEffect, useState } from 'react'
 
@@ -20,6 +19,7 @@ export default function SliderModal({
   itemName
 }: SliderModalProps) {
   const [sliderValue, setSliderValue] = useState<number>(currentPosition)
+  const [inputValue, setInputValue] = useState<string>(String(currentPosition))
   const [feedback, setFeedback] = useState<string | null>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -39,60 +39,103 @@ export default function SliderModal({
 
   useEffect(() => {
     setSliderValue(currentPosition)
+    setInputValue(String(currentPosition))
     setFeedback(null)
   }, [currentPosition, isOpen])
 
-  // モーダルが開いている時だけ表示
   if (!isOpen) return null
 
+
+  const clampValue = (raw: number | null) => {
+    if (raw == null || isNaN(raw)) return 1
+    return Math.min(Math.max(raw, 1), maxPosition)
+  }
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSliderValue(Number(e.target.value))
+    const val = Number(e.target.value)
+    setSliderValue(val)
+    setInputValue(String(val))
+  }
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value)
+  }
+
+
+  const handleNumberInputBlur = () => {
+    const num = parseInt(inputValue, 10)
+    const clamped = clampValue(num)
+    setSliderValue(clamped)
+    setInputValue(String(clamped))
   }
 
   const handleDecrement = () => {
-    setSliderValue((prev) => Math.max(1, prev - 1))
+    setSliderValue((prev) => {
+      const dec = Math.max(1, prev - 1)
+      setInputValue(String(dec))
+      return dec
+    })
   }
-
   const handleIncrement = () => {
-    setSliderValue((prev) => Math.min(maxPosition, prev + 1))
+    setSliderValue((prev) => {
+      const inc = Math.min(maxPosition, prev + 1)
+      setInputValue(String(inc))
+      return inc
+    })
   }
 
   const handleApply = () => {
     setFeedback('更新中...')
+    const num = parseInt(inputValue, 10)
+    const clamped = clampValue(num)
+    setSliderValue(clamped)
+    setInputValue(String(clamped))
+
     setTimeout(() => {
-      onPositionChange(sliderValue)
+      onPositionChange(clamped)
       onClose()
     }, 300)
   }
 
+  const calcFillPercentage = () => {
+    if (maxPosition <= 1) return 0
+    return ((sliderValue - 1) / (maxPosition - 1)) * 100
+  }
+  const fillPercent = calcFillPercentage()
   const midValue = Math.ceil(maxPosition / 2)
 
   return (
-    // モーダルオーバーレイ - 画面全体をカバー
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    <div
       style={{
-        touchAction: 'none', // スクロール防止
-        overflow: 'hidden',
-        height: '100%',
-        width: '100%'
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        zIndex: 9999,
+        touchAction: 'none',
+        overflow: 'hidden'
       }}
     >
-      {/* モーダル本体 - 中央に表示 */}
       <div
         ref={modalRef}
-        className="bg-white rounded-lg w-full max-w-xs shadow-xl m-4 overflow-hidden"
+        className="overflow-hidden relative"
         style={{
           maxHeight: '90vh',
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)'
+          width: '85%',
+          maxWidth: '300px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '16px'
         }}
       >
         <style>
           {`
-            /* スライダー見た目調整 */
+            /* スライダーの親指 */
             input[type="range"]::-webkit-slider-thumb {
               -webkit-appearance: none;
               appearance: none;
@@ -118,45 +161,106 @@ export default function SliderModal({
               height: 2px;
               background: transparent;
             }
+
+            /* type="number" の上下矢印を非表示にする */
+            input[type="number"]::-webkit-outer-spin-button,
+            input[type="number"]::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+            input[type="number"] {
+              -moz-appearance: textfield; /* Firefoxでの上下矢印非表示 */
+            }
           `}
         </style>
 
         {/* ヘッダー */}
-        <div className="flex justify-between items-center p-3 border-b">
-          <h3 className="text-base font-medium">数値を指定して並び替え</h3>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '0.75rem',
+            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: '#f8f9fa'
+          }}
+        >
+          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>数値を指定して並び替え</h3>
           <button
             onClick={onClose}
-            className="text-2xl leading-none px-2"
+            style={{ fontSize: '1.5rem', lineHeight: '1', padding: '0 0.5rem' }}
           >
             &times;
           </button>
         </div>
 
         {/* スタッフ名 */}
-        <div className="px-3 py-2 border-b">
-          <div className="font-medium text-gray-800">
-            {itemName}
-          </div>
-          <div className="text-sm text-gray-500">
+        <div
+          style={{
+            padding: '0.75rem',
+            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: '#f8f9fa'
+          }}
+        >
+          <div style={{ fontWeight: 500, color: '#1F2937' }}>{itemName}</div>
+          <div style={{ fontSize: '0.875rem', color: '#6B7280' }}>
             現在の順番: {currentPosition}
           </div>
         </div>
 
-        {/* 大きめの数値 & 矢印ボタン */}
-        <div className="py-4 flex flex-col items-center">
+        <div className="py-5 flex flex-col items-center">
           <div className="flex items-center">
             <button
               onClick={handleDecrement}
-              className="text-3xl font-bold mx-3 px-2 py-1"
+              style={{
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                margin: '0 1rem',
+                padding: '0.25rem 0.5rem',
+                color: '#F59E0B'
+              }}
             >
               &lt;
             </button>
-            <div className="text-5xl font-bold w-24 text-center">
-              {sliderValue}
+
+            {/* 数字入力 */}
+            <div
+              style={{
+                fontSize: '3.5rem',
+                fontWeight: 'bold',
+                width: '120px',
+                textAlign: 'center',
+                color: '#111827'
+              }}
+            >
+              <input
+                type="number"
+                value={inputValue}
+                onChange={handleNumberInputChange}
+                onBlur={handleNumberInputBlur}
+                min={1}
+                max={maxPosition}
+                style={{
+                  width: '100%',
+                  fontSize: '3.5rem',
+                  textAlign: 'center',
+                  color: '#111827',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none'
+                }}
+              />
             </div>
+
             <button
               onClick={handleIncrement}
-              className="text-3xl font-bold mx-3 px-2 py-1"
+              style={{
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                margin: '0 1rem',
+                padding: '0.25rem 0.5rem',
+                color: '#F59E0B'
+              }}
             >
               &gt;
             </button>
@@ -164,14 +268,23 @@ export default function SliderModal({
         </div>
 
         {/* 数値範囲表示 */}
-        <div className="flex justify-between px-4 text-sm text-gray-600 mb-1">
-          <span>1</span>
-          <span>{midValue}</span>
-          <span>{maxPosition}</span>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            padding: '0 1.5rem',
+            fontSize: '0.875rem',
+            color: '#6B7280',
+            marginBottom: '0.5rem'
+          }}
+        >
+          <span style={{ fontWeight: 500 }}>1</span>
+          <span style={{ fontWeight: 500 }}>{midValue}</span>
+          <span style={{ fontWeight: 500 }}>{maxPosition}</span>
         </div>
 
         {/* スライダー */}
-        <div className="px-4 mb-4">
+        <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
           <input
             type="range"
             min={1}
@@ -179,8 +292,8 @@ export default function SliderModal({
             value={sliderValue}
             onChange={handleSliderChange}
             style={{
-              background: `linear-gradient(to right, #F59E0B 0%, #F59E0B ${(sliderValue / maxPosition) * 100}%, #d1d5db ${(sliderValue / maxPosition) * 100}%, #d1d5db 100%)`,
-              height: '2px',
+              background: `linear-gradient(to right, #F59E0B 0%, #F59E0B ${fillPercent}%, #e2e8f0 ${fillPercent}%, #e2e8f0 100%)`,
+              height: '4px',
               width: '100%',
               outline: 'none',
               WebkitAppearance: 'none'
@@ -189,28 +302,63 @@ export default function SliderModal({
           />
         </div>
 
-        {/* ボタン - 2つ横並び */}
-        <div className="grid grid-cols-2 gap-2 border-t">
-          <button
-            onClick={onClose}
-            className="py-3 text-gray-800 font-medium"
+        {/* ボタン*/}
+        <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              borderTop: '1px solid #e2e8f0',
+              height: '48px',
+              width: '100%'
+            }}
           >
-            閉じる
-          </button>
-          <button
-            onClick={handleApply}
-            className="py-3 text-orange-500 font-medium"
-          >
-            移動する
-          </button>
+            <button
+              onClick={onClose}
+              style={{
+                height: '100%',
+                width: '100%',
+                fontSize: '0.9375rem',
+                fontWeight: 500,
+                color: '#6B7280',
+                borderRight: '1px solid #e2e8f0',
+                background: 'white',
+                margin: 0,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '8px 0 0 8px'
+              }}
+            >
+              閉じる
+            </button>
+            <button
+              onClick={handleApply}
+              style={{
+                height: '100%',
+                width: '100%',
+                fontSize: '0.9375rem',
+                fontWeight: 500,
+                color: 'white',
+                backgroundColor: '#F59E0B',
+                margin: 0,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '0 8px 8px 0'
+              }}
+            >
+              移動する
+            </button>
+          </div>
         </div>
 
         {/* フィードバック */}
         {feedback && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/90">
-            <div className="text-center text-gray-500">
-              {feedback}
-            </div>
+            <div className="text-center text-gray-500">{feedback}</div>
           </div>
         )}
       </div>

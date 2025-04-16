@@ -31,7 +31,6 @@ interface StaffReorderPageProps {
   staffResults?: StaffItem[]
 }
 
-// SortableItemコンポーネント - インラインスタイルを使用
 function SortableStaffItem({
   item,
   onOpenSlider,
@@ -49,7 +48,6 @@ function SortableStaffItem({
     transition
   } = useSortable({ id: item.id.toString() })
 
-  // 横方向の移動を無効化（x = 0）
   const adjustedTransform = transform
     ? { ...transform, x: 0 }
     : null
@@ -57,17 +55,12 @@ function SortableStaffItem({
   const baseStyle = {
     transform: CSS.Transform.toString(adjustedTransform),
     transition,
-    // ドラッグ中は高さを固定して安定させる
     height: '3.5rem',
-    // ドラッグ中はz-indexを上げて他の要素の上に表示
     zIndex: isDragging ? 10 : 1,
-    // ドラッグ中の要素の背景色を変更して視覚的なフィードバックを提供
     backgroundColor: isDragging ? '#f3f4f6' : 'white',
-    // タッチ操作時のハイライトを無効化
     WebkitTapHighlightColor: 'transparent'
   }
 
-  // インラインスタイルで明示的に指定
   const containerStyle = {
     ...baseStyle,
     display: 'flex',
@@ -79,15 +72,15 @@ function SortableStaffItem({
     marginBottom: '0.5rem',
     border: '1px solid #e2e8f0',
     borderRadius: '0.25rem',
-    touchAction: 'none' // タッチ操作でのスクロールを無効化
+    touchAction: 'none'
   }
 
   return (
     <div ref={setNodeRef} style={containerStyle}>
-      {/* 左側グループ (番号と名前) */}
+      {/* 番号と名前 */}
       <div style={{
         display: 'flex',
-        flexDirection: 'row' as const,
+        flexDirection: 'row',
         alignItems: 'center',
         flex: 1
       }}>
@@ -111,16 +104,16 @@ function SortableStaffItem({
         </div>
       </div>
 
-      {/* ハンドルアイコン (右側) - タップ領域を広げる */}
+      {/* ハンドルアイコン*/}
       <div
         {...attributes}
         {...listeners}
-        style={{ 
+        style={{
           cursor: 'grab',
           color: '#6b7280',
-          padding: '0.5rem',  // タップ領域を広げる
-          fontSize: '1.25rem', // アイコンを少し大きく
-          touchAction: 'none' // スクロールを無効化
+          padding: '0.5rem', 
+          fontSize: '1.25rem', 
+          touchAction: 'none' 
         }}
       >
         ⋮⋮
@@ -129,14 +122,10 @@ function SortableStaffItem({
   )
 }
 
-// Mock data for demonstration
-const MOCK_STAFF: StaffItem[] = [
-  { id: 1, name: '佐藤 健太', position: 1 },
-  { id: 2, name: '鈴木 美咲', position: 2 },
-  { id: 3, name: '田中 裕子', position: 3 },
-  { id: 4, name: '伊藤 大輔', position: 4 },
-  { id: 5, name: '渡辺 結衣', position: 5 }
-]
+const MOCK_STAFF: StaffItem[] = []
+for (let i = 1; i <= 100; i++) {
+  MOCK_STAFF.push({ id: i, name: `スタッフ${i}`, position: i })
+}
 
 export default function StaffReorderPage({
   staffResults = MOCK_STAFF
@@ -147,35 +136,28 @@ export default function StaffReorderPage({
   const [sliderValue, setSliderValue] = useState(0)
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  // センサーの設定をモバイル向けに最適化
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      // モバイルでのドラッグをより反応しやすくするための設定
-      activationConstraint: {
-        delay: 100, // 短い遅延でドラッグ開始
-        tolerance: 5, // 小さな動きでもドラッグ開始
-      }
+      // activationConstraint: {
+      //   delay: 100, 
+      //   tolerance: 5, 
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates
     })
   )
 
-  // ドラッグ開始時の処理
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id.toString())
-    
-    // モバイルでのスクロールを防止するためのボディスタイル設定
+
     document.body.style.overflow = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.width = '100%'
   }
 
-  // ドラッグキャンセル時の処理
   const handleDragCancel = (event: DragCancelEvent) => {
     setActiveId(null)
-    
-    // スクロール設定を戻す
+
     document.body.style.overflow = ''
     document.body.style.position = ''
     document.body.style.width = ''
@@ -183,14 +165,13 @@ export default function StaffReorderPage({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    
-    // スクロール設定を戻す
+
     document.body.style.overflow = ''
     document.body.style.position = ''
     document.body.style.width = ''
-    
+
     setActiveId(null)
-    
+
     if (over && active.id !== over.id) {
       setItems((prevItems) => {
         const oldIndex = prevItems.findIndex((i) => i.id.toString() === active.id)
@@ -246,7 +227,6 @@ export default function StaffReorderPage({
     }
   }, [staffResults])
 
-  // モバイルでのドラッグ体験を最適化するための処理
   useEffect(() => {
     const preventDefaultTouchMove = (e: TouchEvent) => {
       // ドラッグ中のみスクロールを防止
@@ -255,10 +235,8 @@ export default function StaffReorderPage({
       }
     }
 
-    // タッチイベントリスナーを追加
     document.addEventListener('touchmove', preventDefaultTouchMove, { passive: false })
 
-    // クリーンアップ関数
     return () => {
       document.removeEventListener('touchmove', preventDefaultTouchMove)
       document.body.style.overflow = ''
@@ -269,25 +247,12 @@ export default function StaffReorderPage({
 
   return (
     <div style={{ padding: '1rem' }}>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        marginBottom: '1rem'
-      }}>
+      {/* 一覧タイトル */}
+      <div style={{ marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>スタッフ一覧</h2>
-        <button 
-          onClick={handleSave} 
-          style={{ 
-            border: '1px solid #e2e8f0', 
-            padding: '0.25rem 1rem', 
-            borderRadius: '0.25rem' 
-          }}
-        >
-          並び替えを保存
-        </button>
       </div>
 
+      {/* 並べ替え用のDndContext */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -310,6 +275,7 @@ export default function StaffReorderPage({
         </SortableContext>
       </DndContext>
 
+      {/* スライダーモーダル */}
       {selectedItem && (
         <SliderModal
           isOpen={modalOpen}
@@ -319,6 +285,34 @@ export default function StaffReorderPage({
           onPositionChange={applySliderValue}
           itemName={selectedItem.name}
         />
+      )}
+
+      {/* 「並び替えを保存」ボタン*/}
+      {!modalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '2rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999
+          }}
+        >
+          <button
+            onClick={handleSave}
+            style={{
+              backgroundColor: '#F59E0B',
+              color: 'white',
+              border: 'none',
+              padding: '0.75rem 1rem',
+              borderRadius: '9999px',
+              boxShadow: '0 4px 9px rgba(0,0,0,0.1)',
+              cursor: 'pointer'
+            }}
+          >
+            並び替えを保存
+          </button>
+        </div>
       )}
     </div>
   )
