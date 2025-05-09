@@ -1,11 +1,11 @@
 // src/pages/StaffReorderPage.tsx
-import * as React from 'react';
+import * as React from 'react'
 import {
   useState,
   useEffect,
   useCallback,
   useRef
-} from 'react';
+} from 'react'
 import {
   DndContext,
   closestCenter,
@@ -16,64 +16,26 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragCancelEvent
-} from '@dnd-kit/core';
+} from '@dnd-kit/core'
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import SliderModal from '../components/SliderModal';
-
-function ImageModal({
-  url,
-  onClose
-}: {
-  url: string;
-  onClose: () => void;
-}) {
-  if (!url) return null;
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.8)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        cursor: 'zoom-out'
-      }}
-    >
-      <img
-        src={url}
-        alt=""
-        style={{
-          maxWidth: '90%',
-          maxHeight: '90%',
-          objectFit: 'contain',
-          borderRadius: '0.5rem',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
-        }}
-      />
-    </div>
-  );
-}
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import SliderModal from '../components/SliderModal'
 
 interface ReorderItem {
-  id: number;
-  name: string;
-  position: number;
-  imageUrl?: string;
+  id: number
+  name: string
+  position: number
 }
 
 interface StaffReorderPageProps {
-  staffResults?: ReorderItem[];
-  itemLabel?: string;
+  staffResults?: ReorderItem[]
+  itemLabel?: string
 }
 
 function SortableItem({
@@ -82,22 +44,18 @@ function SortableItem({
   highlight,
   isSelected,
   selectionMode,
-  ignoreNextClickRef,
   onToggleSelect,
   onLongPress,
-  onOpenSingleSlider,
-  onOpenImageModal
+  onOpenSingleSlider
 }: {
-  item: ReorderItem;
-  isDragging: boolean;
-  highlight: boolean;
-  isSelected: boolean;
-  selectionMode: boolean;
-  ignoreNextClickRef: React.MutableRefObject<boolean>;
-  onToggleSelect: (id: number) => void;
-  onLongPress: (id: number) => void;
-  onOpenSingleSlider: (item: ReorderItem) => void;
-  onOpenImageModal: (url: string) => void;
+  item: ReorderItem
+  isDragging: boolean
+  highlight: boolean
+  isSelected: boolean
+  selectionMode: boolean
+  onToggleSelect: (id: number) => void
+  onLongPress: (id: number) => void
+  onOpenSingleSlider: (item: ReorderItem) => void
 }) {
   const {
     attributes,
@@ -105,369 +63,270 @@ function SortableItem({
     setNodeRef,
     transform,
     transition
-  } = useSortable({ id: item.id.toString(), disabled: selectionMode });
+  } = useSortable({
+    id: item.id.toString(),
+    disabled: selectionMode
+  })
 
-  const timerRef = useRef<number | null>(null);
-  const LONG_PRESS_MS = 600;
+  const timerRef = useRef<number | null>(null)
+  const LONG_PRESS_MS = 600
 
-  const isHandle = (target: EventTarget | null) =>
-    (target as HTMLElement)?.dataset?.handle === 'true';
+  const handlePointerDown = () => {
+    if (selectionMode) return
+    timerRef.current = window.setTimeout(
+      () => onLongPress(item.id),
+      LONG_PRESS_MS
+    )
+  }
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (selectionMode || isHandle(e.target)) return;
-    timerRef.current = window.setTimeout(() => {
-      ignoreNextClickRef.current = true;
-      onLongPress(item.id);
-    }, LONG_PRESS_MS);
-  };
   const clearTimer = () => {
     if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+      clearTimeout(timerRef.current)
+      timerRef.current = null
     }
-  };
+  }
 
-  const handleOuterClick = () => {
-    if (ignoreNextClickRef.current) {
-      ignoreNextClickRef.current = false;
-      return;
-    }
+  const handleClick = () => {
     if (selectionMode) {
-      onToggleSelect(item.id);
+      onToggleSelect(item.id)
+    } else {
+      onOpenSingleSlider(item)
     }
-  };
+  }
 
-  const handleNumberClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (selectionMode) return;
-    onOpenSingleSlider(item);
-  };
-
-  const handleImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (item.imageUrl) {
-      onOpenImageModal(item.imageUrl);
-    }
-  };
-
-  const adjustedTransform = transform ? { ...transform, x: 0 } : null;
-
-  const containerStyle: React.CSSProperties = {
+  const adjustedTransform = transform ? { ...transform, x: 0 } : null
+  const style = {
     transform: CSS.Transform.toString(adjustedTransform),
     transition,
-    height: '3.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    padding: '0.5rem',
-    marginBottom: '0.5rem',
-    border: '1px solid #e2e8f0',
-    borderRadius: '0.25rem',
-    backgroundColor: isSelected
-      ? '#d1d5db'
-      : highlight
-        ? '#FEF3C7'
-        : isDragging
-          ? '#f3f4f6'
-          : 'white',
-    opacity: isSelected ? 0.7 : 1,
     touchAction: 'none',
-    zIndex: isDragging ? 10 : 1,
     WebkitTapHighlightColor: 'transparent',
-    userSelect: 'none'
-  };
+    zIndex: isDragging ? 10 : 1
+  }
 
   return (
     <div
       id={`item-${item.id}`}
       ref={setNodeRef}
-      style={containerStyle}
+      style={style}
+      className={`
+        h-14 flex items-center justify-between w-full p-2 mb-2 border border-gray-200 rounded
+        ${isSelected ? 'bg-gray-300 opacity-70' :
+          highlight ? 'bg-amber-100' :
+            isDragging ? 'bg-gray-100' : 'bg-white'}
+        select-none
+      `}
       onPointerDown={handlePointerDown}
       onPointerUp={clearTimer}
       onPointerLeave={clearTimer}
-      onClick={handleOuterClick}
+      onClick={handleClick}
     >
-      <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-        {/* 番号  */}
-        <div
-          onClick={handleNumberClick}
-          style={{
-            cursor: selectionMode ? 'pointer' : 'zoom-in',
-            fontWeight: 'bold',
-            textAlign: 'left',
-            width: '2rem',
-            marginRight: '0.5rem',
-            flexShrink: 0
-          }}
-        >
+      <div className="flex items-center flex-1 min-w-0">
+        <div className="cursor-pointer font-bold text-left w-14 mr-4 flex-shrink-0">
           {item.position}
         </div>
-
-        {/* 画像 */}
-        {item.imageUrl && (
-          <img
-            src={item.imageUrl}
-            alt=""
-            onClick={handleImageClick}
-            style={{
-              width: '2.5rem',
-              height: '2.5rem',
-              objectFit: 'cover',
-              borderRadius: '0.375rem',
-              marginRight: '0.5rem',
-              flexShrink: 0,
-              cursor: 'zoom-in'
-            }}
-          />
-        )}
-
-        {/* 名前 */}
-        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {item.name}
-        </div>
+        <div className="truncate">{item.name}</div>
       </div>
-
-      {/* ドラッグハンドル */}
       {!selectionMode && (
         <div
           {...attributes}
           {...listeners}
-          data-handle="true"
-          style={{
-            cursor: 'grab',
-            fontSize: '1.25rem',
-            color: '#6b7280',
-            padding: '0.5rem'
-          }}
+          className="cursor-grab text-xl text-gray-500 p-2 flex-shrink-0"
         >
           ⋮⋮
         </div>
       )}
     </div>
-  );
+  )
 }
 
-const MOCK_ITEMS: ReorderItem[] = [
-  { id: 1, name: 'スタッフ1', position: 1, imageUrl: '/download.jpg' },
-  { id: 2, name: 'スタッフ2', position: 2, imageUrl: '/download-1.jpg' },
-  { id: 3, name: 'スタッフ3', position: 3, imageUrl: '/download-2.jpg' },
-  ...Array.from({ length: 97 }, (_, i) => ({
-    id: i + 4,
-    name: `スタッフ${i + 4}`,
-    position: i + 4
-  }))
-];
+const MOCK_ITEMS: ReorderItem[] = Array.from({ length: 100 }, (_, i) => ({
+  id: i + 1,
+  name: `スタッフ${i + 1}`,
+  position: i + 1
+}))
 
 export default function StaffReorderPage({
   staffResults = MOCK_ITEMS,
   itemLabel = 'スタッフ'
 }: StaffReorderPageProps) {
-
-  const [items, setItems] = useState<ReorderItem[]>(staffResults);
-  const [search, setSearch] = useState('');
-  const [matchIds, setMatchIds] = useState<number[]>([]);
-  const [matchIdx, setMatchIdx] = useState(0);
-  const [highlightId, setHighlightId] = useState<number | null>(null);
-
-  const [selectedItem, setSelectedItem] = useState<ReorderItem | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const [imageUrlOpen, setImageUrlOpen] = useState<string | null>(null);
-
-
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [groupModalOpen, setGroupModalOpen] = useState(false);
-
-
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const [undoStack, setUndoStack] = useState<ReorderItem[][]>([]);
-  const [redoStack, setRedoStack] = useState<ReorderItem[][]>([]);
-
-
-  const searchAreaRef = useRef<HTMLDivElement | null>(null);
-
-
-  const ignoreNextClickRef = useRef(false);
-
-
-  const scrollYRef = useRef(0);
+  const [items, setItems] = useState<ReorderItem[]>(staffResults)
+  const [search, setSearch] = useState('')
+  const [matchIds, setMatchIds] = useState<number[]>([])
+  const [matchIdx, setMatchIdx] = useState(0)
+  const [highlightId, setHighlightId] = useState<number | null>(null)
+  const [selectedItem, setSelectedItem] = useState<ReorderItem | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [undoStack, setUndoStack] = useState<ReorderItem[][]>([])
+  const [redoStack, setRedoStack] = useState<ReorderItem[][]>([])
+  const scrollYRef = useRef(0)
+  const searchAreaRef = useRef<HTMLDivElement | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  )
+
+  const recordHistory = useCallback((prev: ReorderItem[]) => {
+    setUndoStack((stack) => [...stack, prev])
+    setRedoStack([])
+  }, [])
+
+  const clearSearchHighlight = useCallback(() => {
+    setSearch('')
+    setHighlightId(null)
+    setMatchIds([])
+    setMatchIdx(0)
+  }, [])
+
+  const handleLongPress = useCallback((id: number) => {
+    setSelectionMode(true)
+    setSelectedIds([id])
+    setActiveId(null)
+  }, [])
+
+  const toggleSelect = useCallback((id: number) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    )
+  }, [])
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedIds([])
+  }, [])
+
+  const getScrollbarWidth = () =>
+    window.innerWidth - document.documentElement.clientWidth
 
   const lockScroll = () => {
-    scrollYRef.current = window.scrollY;
+    scrollYRef.current = window.scrollY
+    const scrollbarWidth = getScrollbarWidth()
     Object.assign(document.body.style, {
       position: 'fixed',
       top: `-${scrollYRef.current}px`,
-      width: '100%',
-      overflow: 'hidden'
-    });
-  };
+      width: '100vw',
+      overflow: 'hidden',
+      paddingRight: `${scrollbarWidth}px`
+    })
+  }
 
   const unlockScroll = () => {
-    const y = scrollYRef.current;
+    const y = scrollYRef.current
     Object.assign(document.body.style, {
       position: '',
       top: '',
       width: '',
-      overflow: ''
-    });
-    window.scrollTo(0, y);
-  };
-
-  const recordHistory = useCallback((prev: ReorderItem[]) => {
-    setUndoStack(stack => [...stack, prev]);
-    setRedoStack([]);
-  }, []);
-
-  const clearSearchHighlight = useCallback(() => {
-    setSearch('');
-    setHighlightId(null);
-    setMatchIds([]);
-    setMatchIdx(0);
-  }, []);
-
-  const handleLongPress = useCallback((id: number) => {
-    setSelectionMode(true);
-    setSelectedIds([id]);
-    setActiveId(null);
-  }, []);
-
-  const toggleSelect = useCallback((id: number) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  }, []);
-
-  const exitSelectionMode = () => {
-    setSelectionMode(false);
-    setSelectedIds([]);
-  };
+      overflow: '',
+      paddingRight: ''
+    })
+    window.scrollTo(0, y)
+  }
 
   const handleDragStart = (e: DragStartEvent) => {
-    setActiveId(e.active.id.toString());
-    clearSearchHighlight();
-    lockScroll();
-  };
+    setActiveId(e.active.id.toString())
+    clearSearchHighlight()
+    lockScroll()
+  }
+
+  const handleDragCancel = () => {
+    setActiveId(null)
+    unlockScroll()
+  }
 
   const handleDragEnd = (e: DragEndEvent) => {
-    const { active, over } = e;
-    setActiveId(null);
-    unlockScroll();
+    const { active, over } = e
+    setActiveId(null)
+    unlockScroll()
     if (over && active.id !== over.id) {
-      const oldIdx = items.findIndex(i => i.id.toString() === active.id);
-      const newIdx = items.findIndex(i => i.id.toString() === over.id);
+      const oldIdx = items.findIndex((i) => i.id.toString() === active.id)
+      const newIdx = items.findIndex((i) => i.id.toString() === over.id)
       const newItems = arrayMove(items, oldIdx, newIdx).map((it, idx) => ({
         ...it,
         position: idx + 1
-      }));
-      recordHistory(items);
-      setItems(newItems);
+      }))
+      recordHistory(items)
+      setItems(newItems)
     }
-  };
-
-  const handleDragCancel = (_e: DragCancelEvent) => {
-    setActiveId(null);
-    unlockScroll();
-  };
+  }
 
   const openSingleSlider = (item: ReorderItem) => {
-    if (selectionMode) return;
-    setSelectedItem(item);
-    setModalOpen(true);
-  };
-
-  const openImageModal = (url: string) => {
-    setImageUrlOpen(url);
-  };
-
-  const scrollToItem = (id: number) => {
-    requestAnimationFrame(() =>
-      document
-        .getElementById(`item-${id}`)
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    );
-  };
+    if (selectionMode) return
+    setSelectedItem(item)
+    setModalOpen(true)
+  }
 
   const applySingleSlider = (position: number) => {
-    if (!selectedItem) return;
-    const oldIdx = items.findIndex(it => it.id === selectedItem.id);
-    if (oldIdx < 0) return;
-    const newIdx = position - 1;
-    const newArr = [...items];
-    const [rm] = newArr.splice(oldIdx, 1);
-    newArr.splice(newIdx, 0, rm);
-    recordHistory(items);
-    setItems(newArr.map((it, idx) => ({ ...it, position: idx + 1 })));
-    setModalOpen(false);
-    setTimeout(() => scrollToItem(selectedItem.id), 0);
-  };
+    if (!selectedItem) return
+    const oldIdx = items.findIndex((it) => it.id === selectedItem.id)
+    if (oldIdx < 0) return
+    const newIdx = position - 1
+    const newArr = [...items]
+    const [rm] = newArr.splice(oldIdx, 1)
+    newArr.splice(newIdx, 0, rm)
+    recordHistory(items)
+    setItems(newArr.map((it, idx) => ({ ...it, position: idx + 1 })))
+    setModalOpen(false)
+  }
 
   const openGroupSlider = () => {
-    if (!selectedIds.length) return;
-    setGroupModalOpen(true);
-  };
+    if (!selectedIds.length) return
+    setGroupModalOpen(true)
+  }
 
   const applyGroupSlider = (position: number) => {
-    const selectedSet = new Set(selectedIds);
-    const group = items.filter(it => selectedSet.has(it.id));
-    const remaining = items.filter(it => !selectedSet.has(it.id));
-    const insertIdx = Math.min(Math.max(position - 1, 0), remaining.length);
+    const selectedSet = new Set(selectedIds)
+    const group = items.filter((it) => selectedSet.has(it.id))
+    const remaining = items.filter((it) => !selectedSet.has(it.id))
+    const insertIdx = Math.min(Math.max(position - 1, 0), remaining.length)
     const newItems = [
       ...remaining.slice(0, insertIdx),
       ...group,
       ...remaining.slice(insertIdx)
-    ].map((it, idx) => ({ ...it, position: idx + 1 }));
-    recordHistory(items);
-    setItems(newItems);
-    setGroupModalOpen(false);
-    exitSelectionMode();
-    setTimeout(() => scrollToItem(group[0].id), 0);
-  };
-
+    ].map((it, idx) => ({ ...it, position: idx + 1 }))
+    recordHistory(items)
+    setItems(newItems)
+    setGroupModalOpen(false)
+    exitSelectionMode()
+  }
 
   const deleteSelected = () => {
-    if (!selectedIds.length) return;
-    recordHistory(items);
-    setItems(prev =>
-      prev.filter(it => !selectedIds.includes(it.id)).map((it, idx) => ({
-        ...it,
-        position: idx + 1
-      }))
-    );
-    exitSelectionMode();
-  };
-
+    if (!selectedIds.length) return
+    recordHistory(items)
+    setItems((prev) =>
+      prev
+        .filter((it) => !selectedIds.includes(it.id))
+        .map((it, idx) => ({ ...it, position: idx + 1 }))
+    )
+    exitSelectionMode()
+  }
 
   const handleUndo = () => {
-    if (!undoStack.length || modalOpen || groupModalOpen) return;
-    setRedoStack(rs => [...rs, items]);
-    const prev = undoStack[undoStack.length - 1];
-    setUndoStack(us => us.slice(0, us.length - 1));
-    setItems(prev);
-  };
+    if (!undoStack.length || modalOpen || groupModalOpen) return
+    setRedoStack((rs) => [...rs, items])
+    const prev = undoStack[undoStack.length - 1]
+    setUndoStack((us) => us.slice(0, us.length - 1))
+    setItems(prev)
+  }
 
   const handleRedo = () => {
-    if (!redoStack.length || modalOpen || groupModalOpen) return;
-    setUndoStack(us => [...us, items]);
-    const next = redoStack[redoStack.length - 1];
-    setRedoStack(rs => rs.slice(0, rs.length - 1));
-    setItems(next);
-  };
+    if (!redoStack.length || modalOpen || groupModalOpen) return
+    setUndoStack((us) => [...us, items])
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack((rs) => rs.slice(0, rs.length - 1))
+    setItems(next)
+  }
 
   const handleSave = () => {
-    console.table(items.map(({ id, position }) => ({ id, position })));
-    setUndoStack([]);
-    setRedoStack([]);
-    // eslint-disable-next-line no-alert
-    alert('並び替えを保存しました');
-  };
+    const positions = items.map(({ id, position }) => ({ id, position }))
+    console.log('Saving positions:', positions)
+    setUndoStack([])
+    setRedoStack([])
+    alert('並び替えを保存しました')
+  }
 
   useEffect(() => {
     const handler = (e: PointerEvent) => {
@@ -475,103 +334,86 @@ export default function StaffReorderPage({
         searchAreaRef.current &&
         !searchAreaRef.current.contains(e.target as Node)
       ) {
-        clearSearchHighlight();
+        clearSearchHighlight()
       }
-    };
-    document.addEventListener('pointerdown', handler);
-    return () => document.removeEventListener('pointerdown', handler);
-  }, [clearSearchHighlight]);
-
+    }
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [clearSearchHighlight])
 
   useEffect(() => {
     if (!search.trim()) {
-      setHighlightId(null);
-      setMatchIds([]);
-      setMatchIdx(0);
-      return;
+      setHighlightId(null)
+      setMatchIds([])
+      setMatchIdx(0)
+      return
     }
-    const keyword = search.trim().toLowerCase();
-    const matches = items.filter(i => i.name.toLowerCase().includes(keyword));
-    const ids = matches.map(i => i.id);
-    setMatchIds(ids);
+    const keyword = search.trim().toLowerCase()
+    const matches = items.filter((i) => i.name.toLowerCase().includes(keyword))
+    const ids = matches.map((i) => i.id)
+    setMatchIds(ids)
 
     if (matches.length) {
-      setMatchIdx(0);
-      const firstId = matches[0].id;
-      setHighlightId(firstId);
-      scrollToItem(firstId);
+      setMatchIdx(0)
+      const firstId = matches[0].id
+      setHighlightId(firstId)
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`item-${firstId}`)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      )
     } else {
-      setHighlightId(null);
+      setHighlightId(null)
     }
-  }, [search, items]);
+  }, [search, items])
 
   const showNextMatch = () => {
-    if (!matchIds.length) return;
-    const nextIdx = (matchIdx + 1) % matchIds.length;
-    setMatchIdx(nextIdx);
-    const id = matchIds[nextIdx];
-    setHighlightId(id);
-    scrollToItem(id);
-  };
+    if (!matchIds.length) return
+    const nextIdx = (matchIdx + 1) % matchIds.length
+    setMatchIdx(nextIdx)
+    const id = matchIds[nextIdx]
+    setHighlightId(id)
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`item-${id}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    )
+  }
 
   const showPrevMatch = () => {
-    if (!matchIds.length) return;
-    const prevIdx = (matchIdx - 1 + matchIds.length) % matchIds.length;
-    setMatchIdx(prevIdx);
-    const id = matchIds[prevIdx];
-    setHighlightId(id);
-    scrollToItem(id);
-  };
+    if (!matchIds.length) return
+    const prevIdx = (matchIdx - 1 + matchIds.length) % matchIds.length
+    setMatchIdx(prevIdx)
+    const id = matchIds[prevIdx]
+    setHighlightId(id)
+    requestAnimationFrame(() =>
+      document
+        .getElementById(`item-${id}`)
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    )
+  }
 
   useEffect(() => {
-    setItems(Array.isArray(staffResults) ? staffResults : []);
-  }, [staffResults]);
+    setItems(Array.isArray(staffResults) ? staffResults : [])
+  }, [staffResults])
 
-  const hasSearchText = search.trim() !== '';
-  const canUndo = undoStack.length > 0 && !modalOpen && !groupModalOpen;
-  const canRedo = redoStack.length > 0 && !modalOpen && !groupModalOpen;
+  const hasSearchText = search.trim() !== ''
+  const canUndo = undoStack.length > 0 && !modalOpen && !groupModalOpen
+  const canRedo = redoStack.length > 0 && !modalOpen && !groupModalOpen
 
   return (
-    <div style={{ padding: '1rem' }}>
-      {/* ヘッダー */}
-      <div
-        style={{
-          position: 'sticky',
-          top: 0,
-          backgroundColor: '#ffffff',
-          zIndex: 30,
-          paddingBottom: '0.75rem',
-          marginBottom: '1rem'
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem'
-          }}
-        >
-          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 'bold' }}>
-            {itemLabel}一覧
-          </h2>
-
-          {/* 検索 */}
-          <div
-            ref={searchAreaRef}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
+    <div className="p-4">
+      <div className="sticky top-0 bg-white z-30 pb-3 mb-4">
+        <div className="flex justify-between items-center gap-4">
+          <h2 className="m-0 text-lg font-bold">{itemLabel}一覧</h2>
+          <div ref={searchAreaRef} className="flex items-center gap-2">
             {hasSearchText && (
               <button
                 onClick={showPrevMatch}
                 disabled={!matchIds.length}
-                style={{
-                  padding: '0.25rem 0.5rem',
-                  cursor: matchIds.length ? 'pointer' : 'default',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.25rem',
-                  backgroundColor: 'white'
-                }}
+                className={`px-2 py-1 border border-gray-200 rounded ${
+                  matchIds.length ? 'cursor-pointer' : 'cursor-default'
+                } bg-white`}
               >
                 ▲
               </button>
@@ -581,31 +423,21 @@ export default function StaffReorderPage({
               placeholder={`${itemLabel}検索...`}
               aria-label={`${itemLabel}検索`}
               value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '9rem',
-                padding: '0.5rem 0.75rem',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.375rem',
-                fontSize: '0.875rem'
-              }}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-48 px-3 py-2 border border-gray-200 rounded-md text-sm"
             />
             {hasSearchText && (
               <>
                 <button
                   onClick={showNextMatch}
                   disabled={!matchIds.length}
-                  style={{
-                    padding: '0.25rem 0.5rem',
-                    cursor: matchIds.length ? 'pointer' : 'default',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '0.25rem',
-                    backgroundColor: 'white'
-                  }}
+                  className={`px-2 py-1 border border-gray-200 rounded ${
+                    matchIds.length ? 'cursor-pointer' : 'cursor-default'
+                  } bg-white`}
                 >
                   ▼
                 </button>
-                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                <span className="text-xs text-gray-500">
                   {matchIds.length ? `${matchIdx + 1}/${matchIds.length}` : '0/0'}
                 </span>
               </>
@@ -613,8 +445,6 @@ export default function StaffReorderPage({
           </div>
         </div>
       </div>
-
-      {/* 並べ替えリスト */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -623,10 +453,10 @@ export default function StaffReorderPage({
         onDragCancel={handleDragCancel}
       >
         <SortableContext
-          items={items.map(i => i.id.toString())}
+          items={items.map((i) => i.id.toString())}
           strategy={verticalListSortingStrategy}
         >
-          {items.map(item => (
+          {items.map((item) => (
             <SortableItem
               key={item.id}
               item={item}
@@ -634,17 +464,13 @@ export default function StaffReorderPage({
               highlight={highlightId === item.id}
               isSelected={selectedIds.includes(item.id)}
               selectionMode={selectionMode}
-              ignoreNextClickRef={ignoreNextClickRef}
               onToggleSelect={toggleSelect}
               onLongPress={handleLongPress}
               onOpenSingleSlider={openSingleSlider}
-              onOpenImageModal={openImageModal}
             />
           ))}
         </SortableContext>
       </DndContext>
-
-      {/* 単一スライダー */}
       {selectedItem && (
         <SliderModal
           isOpen={modalOpen}
@@ -655,18 +481,13 @@ export default function StaffReorderPage({
           itemName={selectedItem.name}
         />
       )}
-
-      {/* 画像モーダル */}
-      <ImageModal url={imageUrlOpen ?? ''} onClose={() => setImageUrlOpen(null)} />
-
-      {/* グループスライダー */}
       {groupModalOpen && (
         <SliderModal
           isOpen={groupModalOpen}
           onClose={() => setGroupModalOpen(false)}
           currentPosition={Math.min(
             ...selectedIds.map(
-              id => items.find(it => it.id === id)?.position || 1
+              (id) => items.find((it) => it.id === id)?.position || 1
             )
           )}
           maxPosition={items.length}
@@ -674,59 +495,27 @@ export default function StaffReorderPage({
           itemName={`選択した${selectedIds.length}件`}
         />
       )}
-
-      {/* フッターボタン */}
       {!modalOpen && !groupModalOpen && !selectionMode && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '2rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999
-          }}
-        >
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="flex gap-2">
             {canUndo && (
               <button
                 onClick={handleUndo}
-                style={{
-                  backgroundColor: '#E5E7EB',
-                  color: '#374151',
-                  border: 'none',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '9999px',
-                  cursor: 'pointer'
-                }}
+                className="bg-gray-200 text-gray-700 border-none py-2 px-3 rounded-full cursor-pointer"
               >
                 ◀︎ 戻る
               </button>
             )}
             <button
               onClick={handleSave}
-              style={{
-                backgroundColor: '#F59E0B',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1rem',
-                borderRadius: '9999px',
-                boxShadow: '0 4px 9px rgba(0,0,0,0.1)',
-                cursor: 'pointer'
-              }}
+              className="bg-amber-500 text-white border-none py-3 px-4 rounded-full shadow-md cursor-pointer"
             >
               並び替えを保存
             </button>
             {canRedo && (
               <button
                 onClick={handleRedo}
-                style={{
-                  backgroundColor: '#E5E7EB',
-                  color: '#374151',
-                  border: 'none',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '9999px',
-                  cursor: 'pointer'
-                }}
+                className="bg-gray-200 text-gray-700 border-none py-2 px-3 rounded-full cursor-pointer"
               >
                 進む ▶︎
               </button>
@@ -734,56 +523,29 @@ export default function StaffReorderPage({
           </div>
         </div>
       )}
-
-      {/* 複数選択操作バー */}
       {selectionMode && !modalOpen && !groupModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '2rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 9999
-          }}
-        >
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="flex gap-2">
             <button
               onClick={deleteSelected}
-              style={{
-                backgroundColor: '#EF4444',
-                color: 'white',
-                border: 'none',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '9999px',
-                cursor: 'pointer'
-              }}
+              className="bg-red-500 text-white border-none py-2 px-3 rounded-full cursor-pointer"
             >
               🗑️ 削除
             </button>
             <button
               onClick={openGroupSlider}
               disabled={!selectedIds.length}
-              style={{
-                backgroundColor: selectedIds.length ? '#3B82F6' : '#93C5FD',
-                color: 'white',
-                border: 'none',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '9999px',
-                cursor: selectedIds.length ? 'pointer' : 'default'
-              }}
+              className={`${
+                selectedIds.length ? 'bg-blue-500' : 'bg-blue-300'
+              } text-white border-none py-2 px-3 rounded-full ${
+                selectedIds.length ? 'cursor-pointer' : 'cursor-default'
+              }`}
             >
               ↔︎ 並べ替え
             </button>
             <button
               onClick={exitSelectionMode}
-              style={{
-                backgroundColor: '#6B7280',
-                color: 'white',
-                border: 'none',
-                padding: '0.5rem 0.75rem',
-                borderRadius: '9999px',
-                cursor: 'pointer'
-              }}
+              className="bg-gray-500 text-white border-none py-2 px-3 rounded-full cursor-pointer"
             >
               ✖️ キャンセル
             </button>
@@ -791,5 +553,5 @@ export default function StaffReorderPage({
         </div>
       )}
     </div>
-  );
+  )
 }
